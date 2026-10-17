@@ -1,0 +1,507 @@
+This code converts a list of text chunks into LangChain Document objects. These objects are commonly used in applications like RAG (Retrieval-Augmented Generation), where you split large text into smaller pieces and then store or search those pieces.
+1. Understanding the code
+python
+# Convert chunks into LangChain Documents
+documents = [
+    Document(page_content=chunk)
+    for chunk in text_chunks
+]
+Let's break it down step by step.
+Step 1: text_chunks
+This is a list containing smaller pieces of text.
+For example:
+python
+text_chunks = [
+    "Python is a programming language.",
+    "LangChain helps build LLM applications.",
+    "RAG retrieves relevant information for an LLM."
+]
+Step 2: for chunk in text_chunks
+This loops through each item in the text_chunks list.
+* First iteration: chunk = "Python is a programming language."
+* Second iteration: chunk = "LangChain helps build LLM applications."
+* Third iteration: chunk = "RAG retrieves relevant information for an LLM."
+
+Step 3: Document(page_content=chunk)
+This creates a LangChain Document object for each text chunk.
+The page_content parameter holds the actual text.
+For example:
+python
+Document (page_content="Python is a programming language.")
+A LangChain Document can also store metadata, such as the source file name or page number.
+Step 4: The list comprehension [...]
+The square brackets collect all the created Document objects into a single list called documents.
+2. What is the output?
+Conceptually, the result looks like this:
+python
+documents = [
+    Document(
+        page_content="Python is a programming language."
+    ),
+    Document(
+        page_content="LangChain helps build LLM applications."
+    ),
+    Document(
+        page_content="RAG retrieves relevant information for an LLM."
+    )
+]
+Each item is a Document object, not just a plain string.
+
+
+
+
+
+def extract_response_text(response):
+    """
+    Extract only the actual answer text from
+    Gemini/LangChain AIMessage.
+
+    Handles both:
+
+    1. String response.content
+
+    2. Structured response.content such as:
+
+       [
+           {
+               "type": "text",
+               "text": "Answer here...",
+               "extras": {
+                   "signature": "..."
+               }
+           }
+       ]
+    """
+
+    content = response.content
+
+    # --------------------------------------------------------
+    # CASE 1: Normal string
+    # --------------------------------------------------------
+
+    if isinstance(content, str):
+
+        return content.strip()
+
+    # --------------------------------------------------------
+    # CASE 2: Structured content blocks
+    # --------------------------------------------------------
+
+    if isinstance(content, list):
+
+        text_parts = []
+
+        for block in content:
+
+            # Make sure block is a dictionary
+            if isinstance(block, dict):
+
+                # We only want blocks of type "text"
+                if block.get("type") == "text":
+
+                    text = block.get("text")
+
+                    if text:
+                        text_parts.append(str(text))
+
+        return "\n".join(text_parts).strip()
+
+    # --------------------------------------------------------
+    # CASE 3: Unexpected format
+    # --------------------------------------------------------
+
+    return str(content).strip()
+
+
+This function extract_response_text(response) is used to extract only the actual text answer from a Gemini/LangChain AI response, even when the response is returned in different formats.
+In simple words, Gemini might return an answer as a normal string or as a list of structured content blocks. This function handles both formats and returns a clean string.
+
+2. Line-by-line explanation
+Step 1: Define the function
+python
+def extract_response_text(response):
+* def defines a Python function.
+* extract_response_text is the function's name.
+* response is the input parameter, which is expected to be a LangChain AIMessage or a compatible object.
+For example, Gemini might return a response like this:
+python
+response.content
+# "Python is a programming language."
+The function's job is to extract the answer from that response.
+Step 2: Get the response content
+python
+content = response.content
+This accesses the content attribute of the response object and stores it in a variable called content.
+For example:
+python
+content = "Python is a programming language."
+Why do this? It makes the rest of the code easier to read because you can use content instead of repeatedly writing response.content.
+Step 3: Case 1 — Content is a string
+python
+if isinstance(content, str):
+    return content.strip()
+Let's understand each part.
+* isinstance(content, str) checks whether content is a Python string.
+* strip() removes whitespace from the beginning and end.
+* return sends the cleaned text back to whoever called the function.
+Example:
+python
+content = "   Hello, how are you?   "
+After calling strip():
+python
+"Hello, how are you?"
+Notice that strip() does not remove spaces between words.
+Step 4: Case 2 — Content is a list
+python
+if isinstance(content, list):
+    text_parts = []
+Sometimes, instead of returning a single string, the AI response contains structured content blocks.
+For example:
+python
+content = [
+    {
+        "type": "text",
+        "text": "Python is easy to learn.",
+        "extras": {"signature": "..."}
+    },
+    {
+        "type": "text",
+        "text": "It is widely used in AI."
+    }
+]
+Here, content is a list containing two dictionaries.
+The line:
+python
+text_parts = []
+creates an empty list that will hold the extracted text.
+Step 5: Loop through every block
+python
+for block in content:
+This loops through each dictionary in the list.
+On the first iteration, block contains:
+python
+{
+    "type": "text",
+    "text": "Python is easy to learn.",
+    "extras": {"signature": "..."}
+}
+On the second iteration, block contains the next dictionary.
+Step 6: Check whether the block is a dictionary
+python
+if isinstance(block, dict):
+This checks whether the current block is a Python dictionary.
+Why is this useful? Because the code expects to access keys such as "type" and "text". Checking the type first helps avoid errors if the list contains an unexpected item, such as a number or a string.
+Step 7: Keep only text blocks
+python
+if block.get("type") == "text":
+The .get("type") method retrieves the value associated with the "type" key.
+For example:
+python
+block.get("type")
+# "text"
+If the type is "text", the code continues. If it is something else, the block is ignored.
+Using .get() also avoids a KeyError when the "type" key is missing.
+Step 8: Extract the actual text
+text = block.get("text")
+
+if text:
+    text_parts.append(str(text))
+Suppose the current block is:
+{
+    "type": "text",
+    "text": "Python is easy to learn.",
+    "extras": {"signature": "..."}
+}
+Then:
+text = block.get("text")
+produces:
+"Python is easy to learn."
+Next:
+if text:
+checks whether the text value is truthy, which excludes empty strings and None.
+Finally:
+text_parts.append(str(text))
+converts the value to a string and appends it to the list.
+After processing both example blocks, the list becomes:
+text_parts = [
+    "Python is easy to learn.",
+    "It is widely used in AI."
+]
+The "extras" field is not extracted because the function only reads the "text" field.
+Step 9: Join the extracted text
+return "\n".join(text_parts).strip()
+This line combines all the extracted text into a single string.
+* "\n" represents a newline character.
+* .join(text_parts) joins the list items with a newline between them.
+* .strip() removes whitespace from the beginning and end of the final result.
+* return sends the result back to the caller.
+Output:
+Python is easy to learn.
+It is widely used in AI.
+Why use "\n".join() instead of "".join()? The newline makes the separate text blocks easier to read instead of running them together.
+Step 10: Case 3 — Unexpected format
+return str(content).strip()
+This is the fallback when content is neither a string nor a list.
+For example:
+content = 12345
+The function returns:
+python
+"12345"
+Using str(content) converts the value to a string before returning it.
+One important detail: this fallback prevents some type-related problems, but it does not guarantee that the result is meaningful answer text. An unexpected object could be converted into its Python representation instead.
+
+
+
+
+
+
+new_db = FAISS.load_local(
+            "faiss_index",
+            embeddings,
+            allow_dangerous_deserialization=True
+        )
+
+        # ----------------------------------------------------
+        # Retrieve relevant documents
+        # ----------------------------------------------------
+
+        docs = new_db.similarity_search(
+            user_question,
+            k=4
+        )
+
+This code is used in a RAG (Retrieval-Augmented Generation) application to load an existing FAISS vector database and retrieve the 4 documents most relevant to the user's question.
+In simple words, it searches previously stored documents to find information that can help an AI model answer a question.
+
+2. Line-by-line explanation
+Step 1: Load the saved FAISS database
+python
+new_db = FAISS.load_local(
+    "faiss_index",
+    embeddings,
+    allow_dangerous_deserialization=True
+)
+This loads a previously saved FAISS vector store from local storage.
+Let's understand each parameter.
+FAISS.load_local()
+* FAISS is a vector store integration provided by LangChain.
+* load_local() loads an index that was saved earlier.
+* The loaded vector store is assigned to the variable new_db.
+"faiss_index"
+This is the folder path where the saved FAISS index and its associated data are expected to exist.
+For example, the folder might contain files such as:
+text
+faiss_index/
+    index.faiss
+    index.pkl
+The exact files depend on how the database was saved.
+embeddings
+This is the embedding model used to convert text into numerical vectors.
+For example, a text chunk might be converted into a vector like this:
+"Python is a programming language."
+Conceptually:
+[0.12, -0.45, 0.78, 0.23, ...]
+The actual vector contains many dimensions. The numbers above are only illustrative.
+When you search the database, the embedding configuration must be compatible with the vectors already stored in the index. Typically, you should use the same embedding model that was used when creating the database.
+allow_dangerous_deserialization=True
+This setting allows LangChain to deserialize the saved Python pickle data associated with the vector store.
+Be careful: pickle deserialization can execute malicious code. Only enable this when you trust the source of the saved index files. This setting is not required for every possible FAISS loading workflow, but it is commonly used with LangChain's locally saved FAISS stores.
+Step 2: Retrieve relevant documents
+docs = new_db.similarity_search(
+    user_question,
+    k=4
+)
+This searches the loaded database for documents that are semantically similar to the user's question.
+new_db.similarity_search()
+This method compares the question with the stored document vectors to find relevant text.
+user_question
+This is the question asked by the user.
+For example:
+user_question = "What is Python used for?"
+The embedding model converts the query into a vector so it can be compared with the stored vectors.
+k=4
+This tells FAISS to return up to four of the most similar documents.
+It does not mean four words, four sentences, or four answers. It means up to four stored Document objects.
+docs
+This variable contains the retrieved documents. Each item is typically a LangChain Document object containing text in page_content and potentially additional information in metadata.
+3. Example: What happens when a user asks a question?
+Suppose your FAISS database contains these text chunks:
+DocumentContentDoc 1Python is a programming language.Doc 2Python is widely used in data science and AI.Doc 3Java is an object-oriented programming language.Doc 4Python supports libraries such as NumPy and pandas.Doc 5HTML is used to structure web pages.The user asks:
+python
+user_question = "How is Python used in AI?"
+The search:
+python
+docs = new_db.similarity_search(user_question, k=4)
+might return the following documents, depending on their vector similarity:
+python
+[
+    Document(page_content="Python is widely used in data science and AI."),
+    Document(page_content="Python supports libraries such as NumPy and pandas."),
+    Document(page_content="Python is a programming language."),
+    Document(page_content="Java is an object-oriented programming language.")
+]
+This is an illustrative result, not a guaranteed ranking. FAISS retrieves documents based on vector similarity, so the exact results depend on the embeddings and index.
+Notice that the retrieved documents are not necessarily exact keyword matches. The search can identify semantically related content.
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Combine retrieved documents
+# ----------------------------------------------------
+This code combines the text from all retrieved documents into one single string called context. In a RAG application, this context is usually passed to the LLM (such as Gemini) so it can answer the user's question using the retrieved information.
+1. Understand the code
+python
+context = "\n\n".join(
+    document.page_content
+    for document in docs
+)
+Let's break it down step by step.
+Step 1: docs
+Remember, in the previous code, you retrieved documents using:
+python
+docs = new_db.similarity_search(
+    user_question,
+    k=4
+)
+Suppose docs contains these three documents:
+python
+docs = [
+    Document(page_content="Python is a programming language."),
+    Document(page_content="Python is used in AI and machine learning."),
+    Document(page_content="Python has libraries such as NumPy and pandas.")
+]
+Each Document object contains text in its page_content attribute.
+Step 2: for document in docs
+python
+for document in docs
+This loops through each retrieved document, one at a time.
+* First iteration: document is the first document.
+* Second iteration: document is the second document.
+* Third iteration: document is the third document.
+Step 3: document.page_content
+document.page_content
+This extracts the actual text from each document.
+For example, the first iteration returns:
+"Python is a programming language."
+The second iteration returns:
+"Python is used in AI and machine learning."
+The third iteration returns:
+"Python has libraries such as NumPy and pandas."
+Step 4: "\n\n".join(...)
+This is the most important part.
+* "\n" represents a newline.
+* "\n\n" represents two newline characters, creating a blank line between text chunks.
+* .join() combines multiple strings into one string.
+For example:
+python
+text_parts = [
+    "Python is a programming language.",
+    "Python is used in AI and machine learning.",
+    "Python has libraries such as NumPy and pandas."
+]
+context = "\n\n".join(text_parts)
+The resulting context is:
+Python is a programming language.
+Python is used in AI and machine learning.
+Python has libraries such as NumPy and pandas.
+Notice that the three separate document texts are now combined into one string, with a blank line between each document.
+Great question! The important thing to understand is that page_content is a standard attribute of LangChain's Document object. It stores the actual text of that document. We are not making up page_content every time; LangChain provides it as part of the Document structure.
+1. Where does page_content come from?
+Remember your earlier code:
+python
+documents = [
+    Document(page_content=chunk)
+    for chunk in text_chunks
+]
+Here, you explicitly assigned each text chunk to the page_content attribute.
+For example, suppose:
+python
+text_chunks = [
+    "Python is a programming language.",
+    "Python is used in AI."
+]
+When you create the documents:
+python
+documents = [
+    Document(page_content=chunk)
+    for chunk in text_chunks
+]
+LangChain creates two Document objects:
+Document 1
+page_content
+"Python is a programming language."
+Document 2
+page_content
+"Python is used in AI."
+Each document has its own page_content value.
+2. Why do we write document.page_content?
+Consider this code:
+python
+for document in docs:
+    print(document.page_content)
+Let's break down document.page_content:
+* document is the variable representing the current document in the loop.
+* . means access an attribute of that object.
+* page_content is the attribute containing the document's text.
+Python automatically accesses the correct text for each document.
+For example:
+Loop iterationdocumentdocument.page_content1First document"Python is a programming language."2Second document"Python is used in AI."You do not have to tell Python which document's text to access. The loop handles that.
+3. Why is it called page_content if a document has multiple pages?
+This is a common source of confusion!
+In LangChain, page_content is the standard field name for the text stored in a Document object. It does not mean that the object must represent one physical page of a PDF.
+For example, you could create a document from a paragraph, a PDF page, a text chunk, or an entire text file.
+from langchain_core.documents import Document
+doc = Document(
+    page_content="Machine learning is a branch of AI."
+)
+print(doc.page_content)
+Output:
+Machine learning is a branch of AI.
+You can also store extra information in metadata:
+doc = Document(
+    page_content="Machine learning is a branch of AI.",
+    metadata={"source": "notes.pdf", "page": 2}
+)
+Here:
+* doc.page_content contains the actual text.
+* doc.metadata contains additional details about the text.
+4. What if we use another attribute name?
+You cannot simply replace page_content with an arbitrary name when constructing a standard LangChain Document.
+For example:
+Document(text="Python is useful.")
+This is not the standard way to create a LangChain Document and will generally raise a validation error because text is not the expected field.
+Use:
+Document(page_content="Python is useful.")
+Then access the text using:
+doc.page_content
+Remember this simple rule
+page_content is the field name; its value is the actual text.
+You assign text to page_content when creating a Document, and later retrieve that text using .page_content. Every LangChain Document has its own value for this field.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Create LangChain Runnable
+# ----------------------------------------------------
+chain = prompt | model
+The code
+chain = prompt | model
+uses LangChain's pipe operator (|) to connect a prompt to an AI model.
+In simple words, it means: first prepare the prompt, then send it to the model to generate a response.
+
+# ----------------------------------------------------
+# Invoke chain
+# ----------------------------------------------------
+        response = chain.invoke(
+            {
+                "context": context,
+                "question": user_question
+            }
+        )
+
